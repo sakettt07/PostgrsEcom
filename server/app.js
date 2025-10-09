@@ -3,6 +3,9 @@ import { config } from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import fileUpload from "express-fileupload";
+import { createTables } from "./utils/createTable.utils.js";
+import {errorMiddleware} from "./middlewares/error.middleware.js";
+import userRouter from "./routes/user.routes.js";
 
 const app=express();
 config({path:"./config/config.env"});
@@ -23,5 +26,14 @@ app.use(fileUpload({
     tempFileDir:"./uploads",
     useTempFiles:true
 }));
+// all the routes will come here
+app.use("/api/v1/user", userRouter);
+// app.use("/api/v1/product", productRouter);
+// app.use("/api/v1/admin", adminRouter);
+// app.use("/api/v1/order", orderRouter);
+
+createTables();
+app.use(errorMiddleware);
+
 
 export default app;
