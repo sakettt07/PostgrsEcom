@@ -15,6 +15,9 @@ const register = catchAsyncErrors(async (req, res, next) => {
     if (!name || !email || !password) {
         return next(new ErrorHandler("Please enter all fields", 400));
     }
+    if (password.length < 8 || password.length > 16) {
+        return next(new ErrorHandler("Password must be between 8 and 16 characters", 400));
+    }
     const isAlreadyRegistered = await database.query(
         `SELECT * FROM users WHERE email=$1`, [email]
     );
@@ -130,49 +133,64 @@ const updatePassword = catchAsyncErrors(async (req, res, next) => {
 })
 const forgotPassword = catchAsyncErrors(async (req, res, next) => {
     const { email } = req.body;
-    const {frontendUrl}=req.query;
+    const { frontendUrl } = req.query;
     if (!email) {
         return next(new ErrorHandler("Please enter your email", 400));
     }
-    let userResult=await database.query(
-        `SELECT * FROM users WHERE email=$1`,[email]
+    let userResult = await database.query(
+        `SELECT * FROM users WHERE email=$1`, [email]
     )
-    if(userResult.rows.length===0){
-        return next(new ErrorHandler("No user found",400));
+    if (userResult.rows.length === 0) {
+        return next(new ErrorHandler("No user found", 400));
     }
-    const user=userResult.rows[0];
-    const {hashedToken,resetPasswordExpireTime,resetToken}=generateResetPasswordToken();
+    const user = userResult.rows[0];
+    const { hashedToken, resetPasswordExpireTime, resetToken } = generateResetPasswordToken();
     await database.query(
         `UPDATE users SET reset_password_token = $1, reset_password_expire = to_timestamp($2) WHERE email = $3`,
-    [hashedToken, resetPasswordExpireTime / 1000, email]
+        [hashedToken, resetPasswordExpireTime / 1000, email]
     );
-    const resetPasswordUrl=`${frontendUrl}/password/reset/${resetToken}`;
-    const message=generateEmailTemplate(resetPasswordUrl);
+    const resetPasswordUrl = `${frontendUrl}/password/reset/${resetToken}`;
+    const message = generateEmailTemplate(resetPasswordUrl);
 
     try {
         await sendEmail({
-            email:user.email,
-            subject:"Ecommerce Password Recovery",
+            email: user.email,
+            subject: "Ecommerce Password Recovery",
             message,
         });
         res.status(200).json({
-            success:true,
-            message:`Email send to ${user.email} successfully`
+            success: true,
+            message: `Email send to ${user.email} successfully`
         });
     } catch (error) {
         await database.query(
-            `UPDATE users SET reset_password_token=NULL,reset_password_expire=NULL WHERE email=$1`,[email]
+            `UPDATE users SET reset_password_token=NULL,reset_password_expire=NULL WHERE email=$1`, [email]
         );
-        return next (new ErrorHandler("Email could not be send",400));
+        return next(new ErrorHandler("Email could not be send", 400));
     }
 
 })
 const resetPassword = catchAsyncErrors(async (req, res, next) => {
-    // const{token}=req.params;
-    // const resetPasswordToken=crypto.createHash('sha256').update(token).digest("hex");
-    // const user=await database.query(
-    //     `SELECT * FROM users WHERE reset_password_token=$1 AND reset_password_expire>NOW()`,[resetPasswordToken]
-    // );
+    const { token } = req.params;
+    const { password, confirmPassword } = req.body;
+    const resetPasswordToken = crypto.createHash('sha256').update(token).digest("hex");
+    const user = await database.query(
+        `SELECT * FROM users WHERE reset_password_token=$1 AND reset_password_expire > NOW()`, [resetPasswordToken]
+    );
+    if (user.rows.length === 0) {
+        return next(new ErrorHandler("Invalid or expired token", 400));
+    }
+    if (password !== confirmPassword) {
+        return next(new ErrorHandler("Password does not match", 400));
+    }
+    if (password.length < 8 || password.length > 16 || confirmPassword.length < 8 || confirmPassword.length > 16) {
+        return next(new ErrorHandler("Password must be between 8 and 16 characters", 400));
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const updatedUser = await database.query(
+        `UPDATE users SET password=$1,reset_password_token=NULL,reset_password_expire=NULL WHERE id=$2 RETURNING *`, [hashedPassword, user.rows[0].id]
+    );
+    sendToken(updatedUser.rows[0], 200, "Password reset successfully", res);
 
 })
 
