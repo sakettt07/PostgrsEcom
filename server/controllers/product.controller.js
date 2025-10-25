@@ -59,7 +59,7 @@ const productDetails = catchAsyncErrors(async (req, res, next) => {
     if (product.rows.length === 0) {
         return next(new ErrorHandler("Product not found", 404));
     }
-    const result=await database.query(
+    const result = await database.query(
         `
             SELECT p.*,
         COALESCE(
@@ -79,12 +79,12 @@ const productDetails = catchAsyncErrors(async (req, res, next) => {
          LEFT JOIN users u ON r.user_id = u.id
          WHERE p.id  = $1
          GROUP BY p.id
-        `,[productId]
+        `, [productId]
     );
     res.status(200).json({
-        success:true,
-        message:"Product fetched successfully",
-        product:result.rows[0],
+        success: true,
+        message: "Product fetched successfully",
+        product: result.rows[0],
     });
 });
 // in this we will be modifying the controller according the query params as we will be having the filters on the frontend
@@ -255,4 +255,37 @@ const deleteProduct = catchAsyncErrors(async (req, res, next) => {
 
 })
 
-export { createProduct, productDetails, fetchAllProducts, updateProduct, deleteProduct };
+const deleteReview = catchAsyncErrors(async (req, res, next) => {
+    const { productId } = req.params;
+    const product = await database.query("SELECT * FROM products WHERE id=$1", [productId]);
+    if (product.rows.length === 0) {
+        return next(new ErrorHandler("Product not found", 404));
+    }
+    const review = await database.query("DELETE FROM reviews WHERE product_id = $1 AND user_id = $2 RETURNING *",
+        [productId, req.user.id])
+    if (review.rows.length === 0) {
+        return next(new ErrorHandler("Review not found.", 404));
+    }
+
+    const allReviews = await database.query(
+        `SELECT AVG(rating) AS avg_rating FROM reviews WHERE product_id = $1`,
+        [productId]
+    );
+
+    const newAvgRating = allReviews.rows[0].avg_rating;
+
+    const updatedProduct = await database.query(
+        `
+        UPDATE products SET ratings = $1 WHERE id = $2 RETURNING *
+        `,
+        [newAvgRating, productId]
+    );
+
+    res.status(200).json({
+        success: true,
+        message: "Your review has been deleted.",
+        review: review.rows[0],
+        product: updatedProduct.rows[0],
+    });
+})
+export { createProduct, productDetails, fetchAllProducts, updateProduct, deleteProduct, deleteReview };
