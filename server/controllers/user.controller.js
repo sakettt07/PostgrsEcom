@@ -193,7 +193,7 @@ const resetPassword = catchAsyncErrors(async (req, res, next) => {
     sendToken(updatedUser.rows[0], 200, "Password reset successfully", res);
 
 })
-
+// admin
 const getAllUsers=catchAsyncErrors(async(req,res,next)=>{
     const page=parseInt(req.query.page)||1;
     const totalUsersResult=await database.query(
@@ -212,7 +212,7 @@ const getAllUsers=catchAsyncErrors(async(req,res,next)=>{
         users:users.rows,
     });
 });
-export const deleteUser=catchAsyncErrors(async(req,res,next)=>{
+const deleteUser=catchAsyncErrors(async(req,res,next)=>{
     const {id}=req.params;
     const deleteUser=await database.query(
         `DELETE FROM users WHERE id=$1 RETURNING *`,[id]
