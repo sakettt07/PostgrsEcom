@@ -1,4 +1,4 @@
-export async function getAIRecommendation(req, res, userPrompt, products) {
+export async function getAIRecommendation(userPrompt, products) {
   const API_KEY = process.env.GEMINI_API_KEY;
   const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
 
@@ -25,29 +25,22 @@ export async function getAIRecommendation(req, res, userPrompt, products) {
     const aiResponseText =
       data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
 
-    // Clean out code block markers like ```json or ```
+    // Remove ```json and ``` markers if present
     const cleanedText = aiResponseText.replace(/```json|```/g, "").trim();
 
     if (!cleanedText) {
-      return res
-        .status(500)
-        .json({ success: false, message: "AI response is empty or invalid." });
+      return { success: false, products: [], message: "AI response is empty or invalid." };
     }
 
-    let parsedProducts;
     try {
-      parsedProducts = JSON.parse(cleanedText);
+      const parsedProducts = JSON.parse(cleanedText);
+      return { success: true, products: parsedProducts };
     } catch (error) {
-      return res
-        .status(500)
-        .json({ success: false, message: "Failed to parse AI response." });
+      console.error("JSON parse error in AI response:", error);
+      return { success: false, products: [], message: "Failed to parse AI response." };
     }
-
-    return res.status(200).json({ success: true, products: parsedProducts });
   } catch (error) {
     console.error("Error in getAIRecommendation:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error." });
+    return { success: false, products: [], message: "Internal server error." };
   }
 }
