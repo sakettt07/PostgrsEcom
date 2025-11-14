@@ -231,6 +231,9 @@ const deleteUser=catchAsyncErrors(async(req,res,next)=>{
     });
 });
 
+const dashboardStats=catchAsyncErrors(async(req,res,next)=>{
+    
+})
 
 
-export { register, login, logout, profile, updateProfile, updatePassword, forgotPassword, resetPassword,getAllUsers,deleteUser };
+export { register, login, logout, profile, updateProfile, updatePassword, forgotPassword, resetPassword,getAllUsers,deleteUser,dashboardStats };

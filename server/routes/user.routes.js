@@ -9,7 +9,8 @@ import {
   resetPassword,
   updatePassword,
   deleteUser,
-  getAllUsers
+  getAllUsers,
+  dashboardStats
 } from "../controllers/user.controller.js";
 import { authorizedRoles, isAuthenticated } from "../middlewares/auth.middleware.js";
 const router = express.Router();
@@ -25,4 +26,5 @@ router.get("/logout",isAuthenticated,logout);
 // the below routes can only be accessed by the admin
 router.delete("/delete/user",isAuthenticated,authorizedRoles("Admin"),deleteUser);
 router.get("/users/all",isAuthenticated,authorizedRoles("Admin"),getAllUsers)
+router.get("/fetch/dashboard-stats",isAuthenticated,authorizedRoles("Admin"),dashboardStats);
 export default router;
